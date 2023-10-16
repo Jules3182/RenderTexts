@@ -12,6 +12,38 @@ bl_info = {
 import bpy
 import requests
 
+def register():
+    # Render Complete Handler
+    bpy.app.handlers.render_post.append(self.post)
+    
+    # Settings Panel
+    bpy.utils.register_class(SettingsPanel)
+    
+    # Interval Options Enum
+    bpy.types.Scene.notification_option = bpy.props.EnumProperty(
+        name="Notification Option",
+        items=[("25", "Every 25%", "Notify at 25% progress"),
+               ("50", "Every 50%", "Notify at 50% progress"),
+               ("100", "Only at the end", "Notify only when rendering is complete")],
+        default="100"
+    )
+    bpy.types.Scene.notification_interval = bpy.props.FloatProperty(
+        name="Notification Interval",
+        description="Set the notification interval as a percentage",
+        default=1.0,
+        min=0.0,
+        max=1.0
+    )
+    
+def unregister():
+    bpy.app.handlers.render_post.remove(render_post_handler)
+    bpy.utils.unregister_class(SettingsPanel)
+    del bpy.types.Scene.notification_option
+    del bpy.types.Scene.notification_interval
+    
+if __name__ == "__main__":
+    register()
+    
 class SettingsPanel(bpy.types.Panel):
     bl_label = "Render Text Settings"
     bl_idname = "PT_CustomRenderSettings"
@@ -22,44 +54,45 @@ class SettingsPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-
+        
+        first_frame = bpy.context.scene.frame_start
+        total_frames = bpy.context.scene.frame_end - first_frame
+        current_frame = bpy.context.scene.frame_current
+        comp_perc = (current_frame - first_frame) / total_frames * 100
+        
         # Settings Panel
         layout.label(text="Settings for render notifications")
         layout.prop(scene, "Note_Tog", text="Enable Notifications")
         
-        total_frames = bpy.context.scene.frame_end
-        current_frame = bpy.context.scene.frame_current
-        comp_perc = current_frame / total_frames * 100
+
         
         if scene.Note_Tog:
             layout.prop(scene, "notification_option", text="Interval")
             layout.label(text="Scene Info:")
             layout.label(text="Total Frames: " + str(total_frames))
             layout.label(text="Current Frame: " + str(current_frame))
-            layout.label(text="Completion: " + str(int(current_frame / total_frames * 100)) + "%")
+            layout.label(text="Completion: " + str(int(comp_perc)) + "%")
             
+            def render_post_handler(scene, comp_perc):
+            # This function will be called when a render completes
+                print("Frame complete")
+
+                # Update the notification option based on the chosen value
+                if scene.notification_option == "25":
+                    if comp_perc == 25 or 50 or 75 or 99:
+                        mess_out = "Render is now " + str(int(comp_perc)) + "% complete! This is every 25"
+                        notify(mess_out)
+                elif scene.notification_option == "50":
+                    if comp_perc == 50 or 99:
+                        mess_out = "Render is now " + str(int(comp_perc)) + "% complete! This is every 50"
+                        notify(mess_out)
+                else:
+                    if comp_perc == 99:
+                        notify("Render complete!")
+                
         else:
             layout.label(text="Notifications Disabled")
-
-          
-def render_complete_handler(scene):
-# This function will be called when a render completes
-    print("Frame complete")
-    if scene.Note_Tog:
-        #SettingsPanel.draw(self, context)
-        # Update the notification option based on the chosen value
-        if scene.notification_option == "25":
-            if comp_perc == 25 or 50 or 75 or 99:
-                mess_out = "Render is now " + str(comp_perc) + "% complete!"
-                notify(mess_out)
-        elif scene.notification_option == "50":
-            if comp_perc == 50 or 99:
-                mess_out = "Render is now " + str(comp_perc) + "% complete!"
-                notify(mess_out)
-        else:
-            if comp_perc == 99:
-                notify("Render complete!")
-                
+ 
   
 # Main Toggle On and Off
 def Note_Tog(self, context):
@@ -85,36 +118,3 @@ bpy.types.Scene.Note_Tog = bpy.props.BoolProperty(
 def notify(message):
     print(message)
     #requests.post("https://ntfy.sh/mytopic", data = message)
-
-
-def register():
-    # Render Complete Handler
-    bpy.app.handlers.render_complete.append(render_complete_handler)
-    
-    # Settings Panel
-    bpy.utils.register_class(SettingsPanel)
-    
-    # Interval Options Enum
-    bpy.types.Scene.notification_option = bpy.props.EnumProperty(
-        name="Notification Option",
-        items=[("25", "Every 25%", "Notify at 25% progress"),
-               ("50", "Every 50%", "Notify at 50% progress"),
-               ("100", "Only at the end", "Notify only when rendering is complete")],
-        default="100"
-    )
-    bpy.types.Scene.notification_interval = bpy.props.FloatProperty(
-        name="Notification Interval",
-        description="Set the notification interval as a percentage",
-        default=1.0,
-        min=0.0,
-        max=1.0
-    )
-    
-def unregister():
-    bpy.app.handlers.render_complete.remove(render_complete_handler)
-    bpy.utils.unregister_class(SettingsPanel)
-    del bpy.types.Scene.notification_option
-    del bpy.types.Scene.notification_interval
-    
-if __name__ == "__main__":
-    register()
